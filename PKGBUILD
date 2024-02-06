@@ -19,7 +19,7 @@ arch=(
   any
 )
 _ns="pypa"
-url="https://github.com/${_ns}/${_proj}flit/tree/main/${_Pkg}"
+url="https://github.com/${_ns}/${_proj}/tree/main/${_Pkg}"
 license=(
   BSD
 )
@@ -28,6 +28,7 @@ depends=(
 )
 makedepends=(
   "${_py}-wheel"
+  "${_py}-pathlib"
 )
 [[ "${_build}" == true ]] && \
   makedepends+=(
@@ -40,7 +41,7 @@ checkdepends=(
 )
 _pypi="https://files.pythonhosted.org/packages/source"
 source=(
-  "${_pypi}/${_pkg::1}/$_pkg}/${_pkg/-/_}-$pkgver.tar.gz"
+  "${_pypi}/${_pkg::1}/${_pkg}/${_pkg/-/_}-${pkgver}.tar.gz"
 )
 sha512sums=(
   '1205589930d2c51d6aa6b2533a122a912e63b157e94adba2a0649a58d324fa98a5b84609d9b53e9d236f1cdb6a6984de2cefcf2f11abc2cd83956df21f269ad6'
@@ -54,8 +55,11 @@ build() {
     _module_opts=()
   _module_opts=(
     -m
-      "build"
-    pack
+      "wheel"
+    pack \
+      --dest-dir
+        "dist"
+        .
   )
   [[ "${_build}" == "true" ]] && \
     _module_opts=(
@@ -67,8 +71,10 @@ build() {
     )
   cd \
     "${_pkg/-/_}-${pkgver}"
+  ls
   "${_py}" \
-    "${_module_opts[@]}"
+    "build_dists.py"
+    # "${_module_opts[@]}"
 }
 
 check() {
@@ -80,7 +86,23 @@ check() {
 
 package() {
   local \
-    _site_packages
+    _site_packages \
+    _module_opts=()
+  _module_opts=(
+    -m
+      "wheel"
+    unpack
+      "dist/"*".whl"
+      --dest=${pkgdir}""
+  )
+  [[ "${_build}" == "true" ]] && \
+    _module_opts=(
+      -m
+        "installer"
+      --destdir="${pkgdir}" \
+      dist/*.whl
+    )
+ 
   _site_packages=$( \
       "${_py}" \
         -c \
@@ -88,10 +110,7 @@ package() {
   cd \
     "${_pkg/-/_}-${pkgver}"
   "${_py}" \
-    -m \
-      installer \
-      --destdir="${pkgdir}" \
-      dist/*.whl
+    "${_module_opts[@]}"
   install \
     -vDm 644 \
     LICENSE \
